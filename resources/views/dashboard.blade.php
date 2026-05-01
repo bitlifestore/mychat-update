@@ -147,6 +147,19 @@ body{
     margin-right:12px;
     font-weight:600;
     font-size:16px;
+    color:#111b21;
+    overflow:hidden;
+    position:relative;
+}
+
+.user-avatar img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:50%;
+    position:absolute;
+    top:0;
+    left:0;
 }
 
 .user-info{
@@ -195,6 +208,18 @@ body{
     color:#111b21;
     font-weight:600;
     font-size:16px;
+    overflow:hidden;
+    position:relative;
+}
+
+.chat-header-avatar img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:50%;
+    position:absolute;
+    top:0;
+    left:0;
 }
 
 .chat-info{
@@ -3854,12 +3879,22 @@ body.light-mode .profile-popup-btn-danger:hover {
     </div>
     <div class="user-list">
         @foreach($users as $user)
-            <div class="user" onclick="openChat({{ $user->id }}, '{{ $user->name }}')" id="user-{{ $user->id }}">
-                <div class="user-avatar">{{ substr($user->name, 0, 1) }}</div>
+            <div class="user" onclick="openChat({{ $user->id }}, '{{ $user->name }}')" id="user-{{ $user->id }}" data-user-id="{{ $user->id }}">
+                <div class="user-avatar">
+                    @if($user->profile_image)
+                        <img src="{{ asset('storage/' . $user->profile_image) }}" alt="{{ $user->name }}" onerror="this.style.display='none'; this.parentElement.innerHTML='{{ substr($user->name, 0, 1) }}';">
+                    @else
+                        {{ substr($user->name, 0, 1) }}
+                    @endif
+                </div>
                 <div class="user-info">
                     <div class="user-name">{{ $user->name }}</div>
                     <div class="user-status">
-                        {{ $user->last_seen ? 'Last seen '.$user->last_seen->diffForHumans() : 'Offline' }}
+                        @if($user->is_online)
+                            <span class="online-indicator"></span>Online
+                        @else
+                            <span class="offline-indicator"></span>Last seen {{ $user->last_seen ? $user->last_seen->diffForHumans() : 'recently' }}
+                        @endif
                     </div>
                 </div>
             </div>
@@ -4791,7 +4826,24 @@ function openChat(id,name){
     }
     
     if (chatAvatarElement) {
-        chatAvatarElement.innerText = name.charAt(0).toUpperCase();
+        // Check if user has a profile image
+        const userElement = document.querySelector(`[data-user-id="${id}"]`);
+        const profileImage = userElement?.querySelector('.user-avatar img');
+        
+        if (profileImage && profileImage.src) {
+            // Show profile image
+            chatAvatarElement.innerHTML = `<img src="${profileImage.src}" alt="${name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        } else {
+            // Fallback to initial letter
+            chatAvatarElement.innerText = name.charAt(0).toUpperCase();
+            chatAvatarElement.style.background = '#25D366';
+            chatAvatarElement.style.display = 'flex';
+            chatAvatarElement.style.alignItems = 'center';
+            chatAvatarElement.style.justifyContent = 'center';
+            chatAvatarElement.style.color = '#111b21';
+            chatAvatarElement.style.fontWeight = '600';
+            chatAvatarElement.style.fontSize = '16px';
+        }
     }
     
     // Update active user in sidebar with null checks
@@ -6797,6 +6849,24 @@ function showProfileScreen() {
             </div>
         </div>
     `;
+    
+    // Set profile image if available
+    setTimeout(() => {
+        const profileImage = document.getElementById('profileImage');
+        const profilePlaceholder = document.getElementById('profilePlaceholder');
+        
+        // Try to get current user's profile image from auth data
+        const currentUserProfileImage = '{{ auth()->user()->profile_image ?? "" }}';
+        
+        if (currentUserProfileImage) {
+            profileImage.src = '/storage/' + currentUserProfileImage;
+            profileImage.style.display = 'block';
+            profilePlaceholder.style.display = 'none';
+        } else {
+            profileImage.style.display = 'none';
+            profilePlaceholder.style.display = 'block';
+        }
+    }, 100);
     
     // Show chat screen with profile
     document.getElementById('chatName').innerText = 'Profile';
